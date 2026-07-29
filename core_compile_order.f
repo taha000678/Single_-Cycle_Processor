@@ -1,0 +1,16 @@
+rtl/Adder.v
+rtl/PCplus4.v
+rtl/program_counter.v
+rtl/Control_Unit.v
+rtl/ALU_Control.v
+rtl/ALU_unit.v
+rtl/immediate_generator.v
+rtl/Register_File.v
+rtl/Mux1.v
+rtl/Mux2.v
+rtl/Mux3.v
+rtl/AND_logic.v
+rtl/wb_master_lsu.v
+rtl/core_test_mem.v
+rtl/riscv_core.v
+sim/riscv_core_tb.v
