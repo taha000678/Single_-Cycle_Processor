@@ -41,7 +41,7 @@ module core_test_mem (
     initial begin
         for (k = 0; k < 2048; k = k + 1)
             mem[k] = 32'h0000_0013; // pre-fill with NOP so unused fetches are harmless
-        $readmemh("def.hex", mem, 0, 1023); // loads program words into addr 0x0000-0x0FFF only
+        $readmemh("test_full.hex", mem, 0, 1023); // loads program words into addr 0x0000-0x0FFF only
     end
 
     assign wb_dat_o = (wb_cyc_i && wb_stb_i && !wb_we_i) ? mem[word_addr] : 32'b0;
