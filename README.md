@@ -123,6 +123,4 @@ Waveform output in Surfer, showing all 14 test results verified correct:
 - [ ] FPGA bring-up (Colorlight i5)
 - [ ] Additional C test programs (recursion, arrays, structs)
 
-## Acknowledgements
 
-Based on the reference design: [Single-Cycle RISC-V SoC with Wishbone Bus and LED Pattern Controller](https://github.com/raheembakhsh761-del/Single-Cycle-RISC-V-SoC-with-Wishbone-Bus-and-LED-Pattern-Controller).
