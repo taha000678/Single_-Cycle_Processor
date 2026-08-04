@@ -149,6 +149,4 @@ The resulting `test_full.hex` is loaded automatically by `wb_prog_mem_slave.v` v
 - [ ] FPGA bring-up (Colorlight i5)
 - [ ] Additional C test programs (recursion, arrays, structs)
 
-## Acknowledgements
 
-Based on the reference design: [Single-Cycle RISC-V SoC with Wishbone Bus and LED Pattern Controller](https://github.com/raheembakhsh761-del/Single-Cycle-RISC-V-SoC-with-Wishbone-Bus-and-LED-Pattern-Controller).
