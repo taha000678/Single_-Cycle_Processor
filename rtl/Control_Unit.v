@@ -43,15 +43,18 @@ module Control_Unit (
             // JALR
             7'b1100111: {ALUSrc,MemtoReg,RegWrite,MemRead,MemWrite,Branch,Jump,ALUop} = 9'b101000100;
 
-            // LUI  — ALUop value doesn't matter (WB_after_lui mux bypasses ALU result)
-            //         keeping 2'b11 (ADD default) is harmless
+            // LUI  — ALUop=11 (always-ADD). WB_after_lui mux bypasses the ALU
+            //        result anyway, so this is mostly a don't-care, but keeping
+            //        it on the always-ADD path is the safe/consistent choice.
             7'b0110111: {ALUSrc,MemtoReg,RegWrite,MemRead,MemWrite,Branch,Jump,ALUop} = 9'b101000011;
 
-            // AUIPC — FIXED: changed ALUop from 2'b11 to 2'b00
-            //         riscv_core routes PC_out → ALU-A, immediate → ALU-B.
-            //         ALUop=00 uses the I-ALU ADD path → Result = PC + imm_u ✓
-            7'b0010111: {ALUSrc,MemtoReg,RegWrite,MemRead,MemWrite,Branch,Jump,ALUop} = 9'b101000000;
-            //                                                                 ^^^^ was 011, now 000
+            // AUIPC — must use ALUop=11 (always-ADD), same as LUI/loads/stores.
+            //         AUIPC's bits[14:12] are part of its immediate, NOT a real
+            //         funct3 -- so any ALUop that decodes based on funct3
+            //         (like 00) can select the wrong ALU operation depending
+            //         on what garbage bits happen to sit there. Only the
+            //         always-ADD encoding is safe here.
+            7'b0010111: {ALUSrc,MemtoReg,RegWrite,MemRead,MemWrite,Branch,Jump,ALUop} = 9'b101000011;
 
             // Default / NOP
             default:    {ALUSrc,MemtoReg,RegWrite,MemRead,MemWrite,Branch,Jump,ALUop} = 9'b000000000;

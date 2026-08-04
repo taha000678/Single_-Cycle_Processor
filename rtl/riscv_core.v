@@ -119,9 +119,15 @@ module riscv_core (
 
     // -------------------------------------------------------------------------
     // Program counter
-    // PC updates only in EXEC phase. It holds its value during FETCH.
+    // PC updates ONLY on the exact cycle EXEC actually completes -- i.e. a
+    // non-memory instruction finishing immediately, or a memory instruction
+    // whose Wishbone transaction has just been acknowledged. It must NOT
+    // advance on every cycle merely spent in the EXEC state, otherwise a
+    // stalled (un-acked) memory access lets the PC run away uncontrolled.
     // -------------------------------------------------------------------------
-    assign PC_update_value = exec_phase ? PCin : PC_out;
+    wire exec_complete = exec_phase & ((cpu_mem_req == 1'b0) || wb_ack_i);
+
+    assign PC_update_value = exec_complete ? PCin : PC_out;
 
     program_counter PC_REG (
         .clk(clk),
@@ -152,12 +158,12 @@ module riscv_core (
 
     // -------------------------------------------------------------------------
     // Register file
-    // Register write is enabled only during EXEC phase.
+    // Register write is enabled only when EXEC actually completes.
     // -------------------------------------------------------------------------
     Register_File RF (
         .clk(clk),
         .reset(reset),
-        .Reg_write(exec_phase & RegWrite),
+        .Reg_write(exec_complete & RegWrite),
         .rs1(instruction[19:15]),
         .rs2(instruction[24:20]),
         .rd(instruction[11:7]),

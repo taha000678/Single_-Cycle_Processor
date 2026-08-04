@@ -1,23 +1,5 @@
 `timescale 1ns/1ps
 
-// ============================================================
-//  core_test_mem.v
-//  A minimal single-slave memory model used ONLY to test
-//  riscv_core.v in isolation, before the real multi-slave
-//  Wishbone SoC (address decoder + 3 separate slaves) exists.
-//
-//  It behaves like a single combined Wishbone slave:
-//    - Program words live at byte addresses 0x0000-0x0FFF
-//    - Data words live at byte addresses 0x1000-0x1FFF
-//  in ONE memory array, so riscv_core's single master port
-//  can fetch instructions and do loads/stores against it
-//  without needing wb_addr_decoder / wb_read_mux / separate
-//  slave modules yet.
-//
-//  Zero-wait-state, combinational ack (same handshake style
-//  used by the real slaves later).
-// ============================================================
-
 module core_test_mem (
     input         clk,
     input         reset,

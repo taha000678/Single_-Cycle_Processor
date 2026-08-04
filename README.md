@@ -1,17 +1,19 @@
-# Single-Cycle RISC-V (RV32I) Processor
+# Single-Cycle RISC-V (RV32I) System-on-Chip
 
-A single-cycle RISC-V processor (RV32I) built from scratch in Verilog, with a Wishbone bus interface — designed, verified in simulation, and made GCC-compatible so it can run real compiled C code.
+A single-cycle RISC-V processor (RV32I) built from scratch in Verilog, integrated into a full WISHBONE B3-compliant System-on-Chip — designed, verified in simulation, made GCC-compatible, and now wired up with a real address-decoded bus and memory-mapped peripherals.
 
 ---
 
 ## Overview
 
-This project implements a RISC-V CPU core module by module (ALU, register file, control unit, immediate generator, load/store unit, etc.), verifies each instruction class in simulation, and integrates a full GCC toolchain flow (linker script + startup code + hex conversion) so C programs can be compiled and run directly on the core.
+This project implements a RISC-V CPU core module by module (ALU, register file, control unit, immediate generator, load/store unit, etc.), verifies each instruction class in simulation, integrates a full GCC toolchain flow (linker script + startup code + hex conversion), and wires the CPU into a complete WISHBONE SoC with an address decoder and three memory-mapped peripherals: program memory, data memory, and GPIO.
 
 ## Features
 
-- Single-cycle RV32I datapath (fetch, decode, execute, memory, writeback in one clock cycle)
-- Wishbone bus master interface for memory and peripheral access
+- Single-cycle RV32I datapath with a 2-cycle FETCH/EXEC Wishbone bus-master FSM
+- Full WISHBONE B3-compliant bus: `CYC`, `STB`, `WE`, `SEL`, `ADR`, `DAT`, `ACK` handshaking
+- Address decoder routing a single shared bus across 3 memory-mapped slaves
+- Bidirectional GPIO peripheral (separate output-drive and external-input registers)
 - Byte / halfword / word memory access with correct sign/zero extension
 - Full branch and jump support: `BEQ`, `BNE`, `BLT`, `BGE`, `BLTU`, `BGEU`, `JAL`, `JALR`
 - GCC-compatible: runs bare-metal, freestanding C programs compiled with the standard RISC-V GCC toolchain
@@ -30,17 +32,24 @@ This project implements a RISC-V CPU core module by module (ALU, register file, 
 | `ALU_unit.v` | Arithmetic / logic operations |
 | `immediate_generator.v` | Sign-extends immediates |
 | `Register_File.v` | 32 general-purpose registers (x0–x31) |
-| `riscv_core.v` | Top-level CPU, Wishbone bus master |
+| `riscv_core.v` | CPU core; 2-cycle FETCH/EXEC Wishbone bus master |
 | `wb_master_lsu.v` | Load/Store unit over Wishbone |
-| `core_test_mem.v` | Combined test memory for standalone core simulation |
+| `wb_addr_decoder.v` | Decodes CPU address into per-slave CYC/STB selects |
+| `wb_read_mux.v` | Combines slave DAT/ACK back to the CPU |
+| `wb_prog_mem_slave.v` | Program memory slave (0x0000–0x0FFF) |
+| `wb_data_mem_slave.v` | Data memory slave (0x1000–0x1FFF) |
+| `wb_gpio_slave.v` | GPIO peripheral slave (0x2000–0x2FFF) |
+| `riscv_soc.v` | Top-level SoC: wires CPU, decoder, slaves, and read mux together |
+| `core_test_mem.v` | Combined test memory for standalone core-only simulation |
 
 ## Memory Map
 
-| Region | Address |
-|---|---|
-| Program memory | `0x00000000` |
-| Data memory | `0x00001000` |
-| LED peripheral | `0x00002000` |
+| Region | Address | Access |
+|---|---|---|
+| Program memory | `0x0000` – `0x0FFF` | R/W |
+| Data memory | `0x1000` – `0x1FFF` | R/W |
+| GPIO output register | `0x2000` | R/W (drives external output pins) |
+| GPIO input register | `0x2004` | Read-only (external input pins) |
 
 ## Getting Started
 
@@ -49,17 +58,17 @@ This project implements a RISC-V CPU core module by module (ALU, register file, 
 - [GTKWave](http://gtkwave.sourceforge.net/) or [Surfer](https://surfer-project.org/) for waveform viewing
 - RISC-V GCC toolchain (`gcc-riscv64-unknown-elf`) for compiling C programs
 
-### Run the simulation
+### Run the full SoC simulation
 ```bash
-iverilog -g2012 -o sim.out -f core_compile_order.f
-vvp sim.out
+iverilog -g2012 -o soc_sim.out -f soc_compile_order.f
+vvp soc_sim.out
 ```
 
 ### View waveforms
 ```bash
-gtkwave riscv_core.vcd
+gtkwave riscv_soc.vcd
 # or
-surfer riscv_core.vcd
+surfer riscv_soc.vcd
 ```
 
 ### Compile and run a C program
@@ -74,13 +83,13 @@ riscv64-unknown-elf-objcopy -O binary test_full.elf test_full.bin
 # 3. Convert to hex (one 32-bit word per line)
 od -An -v -tx4 --endian=little test_full.bin | tr -s ' ' '\n' | sed '/^$/d' > test_full.hex
 ```
-Load the resulting `.hex` file via `$readmemh(...)` in `core_test_mem.v`, then re-run the simulation.
+The resulting `test_full.hex` is loaded automatically by `wb_prog_mem_slave.v` via `$readmemh(...)`.
 
 ## Test Results
 
-`test_full.c` exercises 14 categories of instructions in a single run, with every result stored at a fixed data-memory address for reliable verification:
+`test_full.c` exercises 16 categories of instructions and peripheral access in a single run, with every result stored at a fixed data-memory address for reliable verification:
 
-| Test | Instruction type | Expected |
+| Test | Instruction / peripheral | Expected |
 |---|---|---|
 | Addition | ADD | 13 |
 | Subtraction | SUB | 7 |
@@ -96,30 +105,47 @@ Load the resulting `.hex` file via `$readmemh(...)` in `core_test_mem.v`, then r
 | Byte store/load | SB/LBU | 0xAB |
 | Halfword store/load | SH/LHU | 0xBEEF |
 | Done marker | LUI+SW | 0xDEADBEEF |
+| GPIO output (write + read-back) | GPIO slave, 0x2000 | 0xA5A5A5A5 |
+| GPIO input (external pins) | GPIO slave, 0x2004 | 0x000000FF |
 
-**Result: 14 / 14 passed** ✅
+**Result: 16 / 16 passed** ✅ — verified through the real address-decoded WISHBONE bus (not a simplified single-memory test setup).
 
-## Screenshot
+## Screenshots
 
-Waveform output in Surfer, showing all 14 test results verified correct:
+**GCC-compatible output (C program compiled and verified on the core)**
+![GCC compatible output](./screenshots/surfer-output.png)
 
-![Surfer waveform output](./screenshots/surfer-output.png)
+**All 16 tests passing**
+![16 tests passed](./screenshots/16-tests-passed.png)
+
+**Program memory slave (instruction fetch over Wishbone)**
+![Program memory](./screenshots/prog-mem.png)
+
+**Data memory slave (load/store results over Wishbone)**
+![Data memory](./screenshots/data-mem.png)
+
+**GPIO peripheral (output write + external input read)**
+![GPIO](./screenshots/gpio.png)
 
 ## Project Structure
 ```
 .
 ├── rtl/                     # All Verilog modules
-├── sim/                     # Testbenches
-├── core_compile_order.f     # File list for iverilog
+├── sim/                     # Testbenches (riscv_core_tb.v, riscv_soc_tb.v)
+├── screenshots/             # Waveform/result screenshots for this README
+├── core_compile_order.f     # File list for standalone core-only simulation
+├── soc_compile_order.f      # File list for the full SoC simulation
 ├── linker.ld                # Linker script for GCC
 ├── crt0.s                   # Startup assembly code
-├── test_full.c              # Comprehensive instruction test
+├── test_full.c              # Comprehensive instruction + peripheral test
 └── README.md
 ```
 
 ## Roadmap
 
-- [ ] Full Wishbone SoC integration (address decoder + 3 memory-mapped slaves + LED peripheral)
+- [x] Full WISHBONE SoC integration (address decoder + 3 memory-mapped slaves)
+- [x] GPIO peripheral (bidirectional: output drive + external input read)
+- [ ] UART peripheral
 - [ ] FPGA bring-up (Colorlight i5)
 - [ ] Additional C test programs (recursion, arrays, structs)
 
