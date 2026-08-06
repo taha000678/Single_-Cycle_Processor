@@ -22,7 +22,7 @@ module wb_prog_mem_slave (
     wire [9:0] word_addr = wb_adr_i[11:2];
 
     initial begin
-        $readmemh("test_full.hex", mem);   // <-- change this filename to load a different program
+        $readmemh("led_pattern.hex", mem);   // <-- change this filename to load a different program
     end
 
     wire selected = wb_cyc_i & wb_stb_i;

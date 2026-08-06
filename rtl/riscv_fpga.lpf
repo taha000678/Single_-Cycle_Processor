@@ -1,0 +1,25 @@
+# icesugarpro.lpf -- pin constraints for iCESugar-Pro
+# Device: Lattice LFE5U-25F-6BG256C, package CABGA256
+# Source: official iCESugar-Pro schematic (wuxx/icesugar-pro)
+#   - 25 MHz crystal on pin P6
+#   - onboard RGB LED on pins A11 (R), A12 (G), B11 (B)
+
+LOCATE COMP "clk"   SITE "P6";
+IOBUF   PORT "clk"   IO_TYPE=LVCMOS33;
+
+LOCATE COMP "led_r" SITE "A11";
+IOBUF   PORT "led_r" IO_TYPE=LVCMOS33 DRIVE=4;
+
+LOCATE COMP "led_g" SITE "A12";
+IOBUF   PORT "led_g" IO_TYPE=LVCMOS33 DRIVE=4;
+
+LOCATE COMP "led_b" SITE "B11";
+IOBUF   PORT "led_b" IO_TYPE=LVCMOS33 DRIVE=4;
+LOCATE COMP "led0" SITE "C5";
+LOCATE COMP "led1" SITE "C6";
+LOCATE COMP "led2" SITE "C7";
+LOCATE COMP "led3" SITE "C8";
+IOBUF PORT "led0" IO_TYPE=LVCMOS33;
+IOBUF PORT "led1" IO_TYPE=LVCMOS33;
+IOBUF PORT "led2" IO_TYPE=LVCMOS33;
+IOBUF PORT "led3" IO_TYPE=LVCMOS33;
