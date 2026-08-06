@@ -112,19 +112,19 @@ The resulting `test_full.hex` is loaded automatically by `wb_prog_mem_slave.v` v
 
 ## Screenshots
 
-**GCC-compatible output (C program compiled and verified on the core)**
+## GCC-compatible output (C program compiled and verified on the core)
 ![GCC compatible output](./screenshots/surfer-output.png)
 
-**All 16 tests passing**
+## All 16 tests passing
 ![16 tests passed](./screenshots/16-tests-passed.png)
 
-**Program memory slave (instruction fetch over Wishbone)**
+## Program memory slave (instruction fetch over Wishbone)
 ![Program memory](./screenshots/prog-mem.png)
 
-**Data memory slave (load/store results over Wishbone)**
+## Data memory slave (load/store results over Wishbone)
 ![Data memory](./screenshots/data-mem.png)
 
-**GPIO peripheral (output write + external input read)**
+## GPIO peripheral (output write + external input read)
 ![GPIO](./screenshots/gpio.png)
 
 ## Project Structure
@@ -145,7 +145,6 @@ The resulting `test_full.hex` is loaded automatically by `wb_prog_mem_slave.v` v
 
 - [x] Full WISHBONE SoC integration (address decoder + 3 memory-mapped slaves)
 - [x] GPIO peripheral (bidirectional: output drive + external input read)
-- [ ] UART peripheral
 - [ ] FPGA bring-up (Colorlight i5)
 - [ ] Additional C test programs (recursion, arrays, structs)
 
