@@ -1,12 +1,12 @@
 # Single-Cycle RISC-V (RV32I) System-on-Chip
 
-A single-cycle RISC-V processor (RV32I) built from scratch in Verilog, integrated into a full WISHBONE B3-compliant System-on-Chip — designed, verified in simulation, made GCC-compatible, and now wired up with a real address-decoded bus and memory-mapped peripherals.
+A single-cycle RISC-V processor (RV32I) built from scratch in Verilog, integrated into a full WISHBONE B3-compliant System-on-Chip — designed, verified in simulation, made GCC-compatible, and now running on real FPGA hardware with a memory-mapped GPIO peripheral driving physical LEDs.
 
 ---
 
 ## Overview
 
-This project implements a RISC-V CPU core module by module (ALU, register file, control unit, immediate generator, load/store unit, etc.), verifies each instruction class in simulation, integrates a full GCC toolchain flow (linker script + startup code + hex conversion), and wires the CPU into a complete WISHBONE SoC with an address decoder and three memory-mapped peripherals: program memory, data memory, and GPIO.
+This project implements a RISC-V CPU core module by module (ALU, register file, control unit, immediate generator, load/store unit, etc.), verifies each instruction class in simulation, integrates a full GCC toolchain flow (linker script + startup code + hex conversion), wires the CPU into a complete WISHBONE SoC with an address decoder and three memory-mapped peripherals (program memory, data memory, and GPIO), and finally synthesizes and deploys the whole SoC onto real FPGA hardware.
 
 ## Features
 
@@ -18,6 +18,7 @@ This project implements a RISC-V CPU core module by module (ALU, register file, 
 - Full branch and jump support: `BEQ`, `BNE`, `BLT`, `BGE`, `BLTU`, `BGEU`, `JAL`, `JALR`
 - GCC-compatible: runs bare-metal, freestanding C programs compiled with the standard RISC-V GCC toolchain
 - Verified in simulation with Icarus Verilog, with waveform inspection via GTKWave / Surfer
+- Synthesized for a Lattice ECP5 FPGA (iCESugar-Pro board) using the open-source toolchain (Yosys + nextpnr + ecppack), with the GPIO peripheral driving physical LEDs in real time
 
 ## Architecture
 
@@ -38,8 +39,9 @@ This project implements a RISC-V CPU core module by module (ALU, register file, 
 | `wb_read_mux.v` | Combines slave DAT/ACK back to the CPU |
 | `wb_prog_mem_slave.v` | Program memory slave (0x0000–0x0FFF) |
 | `wb_data_mem_slave.v` | Data memory slave (0x1000–0x1FFF) |
-| `wb_gpio_slave.v` | GPIO peripheral slave (0x2000–0x2FFF) |
+| `wb_gpio_slave.v` / `wb_led_slave.v` | GPIO peripheral slave (0x2000–0x2FFF) |
 | `riscv_soc.v` | Top-level SoC: wires CPU, decoder, slaves, and read mux together |
+| `riscv_fpga_top.v` | FPGA top-level wrapper: connects `riscv_soc` (clk, reset, GPIO) to real board pins |
 | `core_test_mem.v` | Combined test memory for standalone core-only simulation |
 
 ## Memory Map
@@ -57,6 +59,8 @@ This project implements a RISC-V CPU core module by module (ALU, register file, 
 - [Icarus Verilog](http://iverilog.icarus.com/) (`iverilog`, `vvp`)
 - [GTKWave](http://gtkwave.sourceforge.net/) or [Surfer](https://surfer-project.org/) for waveform viewing
 - RISC-V GCC toolchain (`gcc-riscv64-unknown-elf`) for compiling C programs
+- [OSS CAD Suite](https://github.com/YosysHQ/oss-cad-suite-build) (Yosys, nextpnr-ecp5, ecppack) for FPGA synthesis
+- [openFPGALoader](https://github.com/trabucayre/openFPGALoader) for flashing the bitstream
 
 ### Run the full SoC simulation
 ```bash
@@ -84,6 +88,22 @@ riscv64-unknown-elf-objcopy -O binary test_full.elf test_full.bin
 od -An -v -tx4 --endian=little test_full.bin | tr -s ' ' '\n' | sed '/^$/d' > test_full.hex
 ```
 The resulting `test_full.hex` is loaded automatically by `wb_prog_mem_slave.v` via `$readmemh(...)`.
+
+### Synthesize and flash to FPGA
+```bash
+# 1. Synthesize
+yosys -p 'synth_ecp5 -top riscv_fpga_top -json riscv_fpga_top.json' rtl/*.v
+
+# 2. Place and route
+nextpnr-ecp5 --25k --package CABGA256 --speed 6 --json riscv_fpga_top.json \
+  --textcfg riscv_fpga_top.config --lpf rtl/riscv_fpga.lpf
+
+# 3. Pack the bitstream
+ecppack riscv_fpga_top.config riscv_fpga_top.bit
+
+# 4. Flash
+openFPGALoader -b icesugar_pro -f riscv_fpga_top.bit
+```
 
 ## Test Results
 
@@ -127,6 +147,9 @@ The resulting `test_full.hex` is loaded automatically by `wb_prog_mem_slave.v` v
 ## GPIO peripheral (output write + external input read)
 ![GPIO](./screenshots/gpio.png)
 
+## FPGA bring-up — LED chase pattern running on real hardware
+![FPGA running](./screenshots/fpga-led-chase.png)
+
 ## Project Structure
 ```
 .
@@ -138,6 +161,7 @@ The resulting `test_full.hex` is loaded automatically by `wb_prog_mem_slave.v` v
 ├── linker.ld                # Linker script for GCC
 ├── crt0.s                   # Startup assembly code
 ├── test_full.c              # Comprehensive instruction + peripheral test
+├── led_pattern.c            # Bare-metal forward/backward LED chase program
 └── README.md
 ```
 
@@ -145,7 +169,5 @@ The resulting `test_full.hex` is loaded automatically by `wb_prog_mem_slave.v` v
 
 - [x] Full WISHBONE SoC integration (address decoder + 3 memory-mapped slaves)
 - [x] GPIO peripheral (bidirectional: output drive + external input read)
-- [ ] FPGA bring-up (Colorlight i5)
+- [x] FPGA bring-up (Lattice ECP5 / iCESugar-Pro) — LED chase pattern running on real hardware
 - [ ] Additional C test programs (recursion, arrays, structs)
-
-
